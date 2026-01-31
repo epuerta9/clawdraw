@@ -1,0 +1,29 @@
+{
+  "name": "bizcanvas",
+  "version": "0.1.0",
+  "description": "AI-first headless business canvas CLI - mind maps, personas, SWOT, pain points",
+  "module": "src/index.tsx",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "bun run src/index.tsx",
+    "dev": "bun --watch run src/index.tsx",
+    "db:init": "bun run scripts/init-db.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "bunx @biomejs/biome check src/",
+    "format": "bunx @biomejs/biome format --write src/"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/react": "^19.2.10",
+    "@types/uuid": "^11.0.0",
+    "typescript": "^5.9.0"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.17.0",
+    "@opentui/core": "^0.1.75",
+    "@opentui/react": "^0.1.75",
+    "react": "^19.2.4",
+    "uuid": "^13.0.0"
+  }
+}
