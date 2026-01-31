@@ -4,7 +4,9 @@
   "description": "AI-first headless business canvas CLI - mind maps, personas, SWOT, pain points",
   "module": "src/index.tsx",
   "type": "module",
-  "private": true,
+  "bin": {
+    "bizcanvas": "./bin/bizcanvas.ts"
+  },
   "scripts": {
     "start": "bun run src/index.tsx",
     "dev": "bun --watch run src/index.tsx",
