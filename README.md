@@ -1,121 +1,82 @@
 # bizcanvas
 
-AI-first headless business canvas CLI - mind maps, personas, SWOT analysis, pain points, and more.
+Business canvas skill for Claude Code - organize ideas, personas, SWOT analyses, and mind maps with persistent storage and cross-session linking.
 
-Built with [OpenTUI](https://github.com/anomalyco/opentui) + [Turso](https://turso.tech).
+## What it does
 
-## Features
+- **Capture ideas** conversationally through Claude Code
+- **Build personas** with goals, pain points, demographics
+- **SWOT analysis** with 4-quadrant visualization
+- **Link ideas** with labeled relationships
+- **Tag and organize** across projects
+- **Persist** everything in Turso (SQLite) across sessions
 
-- 🧠 **Mind Maps** - Hierarchical idea organization
-- 📊 **SWOT Analysis** - 4-quadrant strategic planning
-- 👤 **Personas** - User research and customer profiles
-- 🔥 **Pain Points** - Problem identification and tracking
-- 🎯 **Opportunities** - Idea capture and prioritization
-- 🤖 **AI-First** - Natural language canvas manipulation (coming soon)
+## Setup
 
-## Quick Start
-
-### 1. Install Dependencies
-
+1. Install dependencies:
 ```bash
+cd bizcanvas
 bun install
 ```
 
-### 2. Configure Database
-
-Get your Turso credentials:
-
-```bash
-turso db show bizcanvas
-turso db tokens create bizcanvas
-```
-
-Create a `.env` file:
-
+2. Configure Turso (already done if you followed setup):
 ```bash
 cp .env.example .env
-# Edit .env with your Turso URL and token
+# Add your TURSO_DATABASE_URL and TURSO_AUTH_TOKEN
 ```
 
-### 3. Run
+## Usage
+
+### In Claude Code (primary way)
+
+```
+/bizcanvas
+```
+
+Then just talk - "I want to create a persona for PlateIQ", "Let's do a SWOT analysis", "Link this to the coach persona", etc.
+
+### CLI (for viewing)
 
 ```bash
-bun start
+# List all notes
+bun run cli list
+
+# List by type
+bun run cli list persona
+
+# Show a note
+bun run cli show <id-prefix>
+
+# Show connections
+bun run cli links <id-prefix>
+
+# Search
+bun run cli search "keyword"
+
+# Show SWOT
+bun run cli swot <collection-id>
+
+# Export all data
+bun run cli export
 ```
 
-## Keyboard Shortcuts
+## Data Model
 
-### Navigation
-- `j/↓` - Next node
-- `k/↑` - Previous node
-- `q` - Quit
+**Notes** - The core unit. Types:
+- `note` 📝 - General notes
+- `idea` 💡 - Ideas and concepts
+- `persona` 👤 - User personas
+- `painpoint` 🔥 - Pain points
+- `goal` 🎯 - Goals
+- `question` ❓ - Questions
+- `swot_s/w/o/t` - SWOT quadrants
 
-### Modes
-- `v` - View mode
-- `e` - Edit mode
-- `c` - Connect mode
-- `a` - AI mode
+**Links** - Bidirectional relationships between notes with optional labels
 
-### Quick Add (in canvas)
-- `i` - Add Idea 💡
-- `p` - Add Pain Point 🔥
-- `o` - Add Opportunity 🎯
-- `u` - Add Persona 👤
-- `g` - Add Goal ⭐
-- `t` - Add Task ✅
-- `q` - Add Question ❓
+**Collections** - Groups of notes (canvas, mindmap, swot, persona_set, project)
 
-### Canvas
-- `n` - New canvas
-- `l` - List/load canvases
-- `d` - Delete selected node
+**Tags** - Cross-cutting organization
 
-### Debug
-- `` ` `` - Toggle console
+## Storage
 
-## Project Structure
-
-```
-bizcanvas/
-├── src/
-│   ├── index.tsx          # Entry point
-│   ├── App.tsx            # Main app component
-│   ├── db/                # Turso database layer
-│   │   ├── client.ts      # Database client
-│   │   └── schema.ts      # SQL schema
-│   ├── state/             # State management
-│   │   ├── types.ts       # TypeScript types
-│   │   └── store.ts       # Store with persistence
-│   ├── components/        # UI components
-│   │   ├── Canvas.tsx     # Main canvas area
-│   │   ├── Node.tsx       # Node rendering
-│   │   ├── Sidebar.tsx    # Left sidebar
-│   │   └── StatusBar.tsx  # Bottom status bar
-│   └── primitives/        # Business templates
-│       ├── SwotAnalysis.tsx
-│       ├── Persona.tsx
-│       └── MindMap.tsx
-└── .env.example           # Environment template
-```
-
-## Database Schema
-
-- **canvases** - Workspaces/boards
-- **nodes** - Items on canvas (ideas, pain points, etc.)
-- **connections** - Relationships between nodes
-- **tags** - Organization labels
-- **ai_conversations** - AI interaction history
-
-## Development
-
-```bash
-# Watch mode
-bun dev
-
-# Type checking
-bun typecheck
-```
-
-## License
-
-MIT
+Data stored in Turso at `libsql://bizcanvas-epuerta.aws-us-east-2.turso.io`
