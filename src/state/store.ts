@@ -1,4 +1,5 @@
-import type { AppState, Action, Node, Connection, Canvas, Tag } from "./types"
+import type { AppState, Action, Node, Connection, Canvas } from "./types"
+import type { InValue } from "@libsql/client"
 import { v4 as uuid } from "uuid"
 import { getDb } from "../db"
 
@@ -92,13 +93,14 @@ export class Store {
     if (result.rows.length === 0) return null
 
     const row = result.rows[0]
+    if (!row) return null
     const canvas: Canvas = {
-      id: row.id as string,
-      name: row.name as string,
-      type: row.type as Canvas["type"],
-      metadata: row.metadata ? JSON.parse(row.metadata as string) : undefined,
-      createdAt: row.created_at as string,
-      updatedAt: row.updated_at as string,
+      id: row["id"] as string,
+      name: row["name"] as string,
+      type: row["type"] as Canvas["type"],
+      metadata: row["metadata"] ? JSON.parse(row["metadata"] as string) : undefined,
+      createdAt: row["created_at"] as string,
+      updatedAt: row["updated_at"] as string,
     }
     this.dispatch({ type: "SET_CANVAS", payload: canvas })
 
@@ -131,12 +133,12 @@ export class Store {
     const db = getDb()
     const result = await db.execute("SELECT * FROM canvases ORDER BY updated_at DESC")
     return result.rows.map((row) => ({
-      id: row.id as string,
-      name: row.name as string,
-      type: row.type as Canvas["type"],
-      metadata: row.metadata ? JSON.parse(row.metadata as string) : undefined,
-      createdAt: row.created_at as string,
-      updatedAt: row.updated_at as string,
+      id: row["id"] as string,
+      name: row["name"] as string,
+      type: row["type"] as Canvas["type"],
+      metadata: row["metadata"] ? JSON.parse(row["metadata"] as string) : undefined,
+      createdAt: row["created_at"] as string,
+      updatedAt: row["updated_at"] as string,
     }))
   }
 
@@ -149,17 +151,17 @@ export class Store {
     })
 
     const nodes: Node[] = result.rows.map((row) => ({
-      id: row.id as string,
-      canvasId: row.canvas_id as string,
-      type: row.type as Node["type"],
-      content: row.content as string,
-      metadata: row.metadata ? JSON.parse(row.metadata as string) : undefined,
-      position: { x: row.position_x as number, y: row.position_y as number },
-      size: { width: row.width as number, height: row.height as number },
-      parentId: row.parent_id as string | undefined,
-      zIndex: row.z_index as number,
-      createdAt: row.created_at as string,
-      updatedAt: row.updated_at as string,
+      id: row["id"] as string,
+      canvasId: row["canvas_id"] as string,
+      type: row["type"] as Node["type"],
+      content: row["content"] as string,
+      metadata: row["metadata"] ? JSON.parse(row["metadata"] as string) : undefined,
+      position: { x: row["position_x"] as number, y: row["position_y"] as number },
+      size: { width: row["width"] as number, height: row["height"] as number },
+      parentId: row["parent_id"] as string | undefined,
+      zIndex: row["z_index"] as number,
+      createdAt: row["created_at"] as string,
+      updatedAt: row["updated_at"] as string,
     }))
 
     this.dispatch({ type: "SET_NODES", payload: nodes })
@@ -207,7 +209,7 @@ export class Store {
     const now = new Date().toISOString()
 
     const sets: string[] = ["updated_at = ?"]
-    const args: unknown[] = [now]
+    const args: InValue[] = [now]
 
     if (updates.content !== undefined) {
       sets.push("content = ?")
@@ -254,14 +256,14 @@ export class Store {
     })
 
     const connections: Connection[] = result.rows.map((row) => ({
-      id: row.id as string,
-      canvasId: row.canvas_id as string,
-      sourceId: row.source_id as string,
-      targetId: row.target_id as string,
-      type: row.type as Connection["type"],
-      label: row.label as string | undefined,
-      metadata: row.metadata ? JSON.parse(row.metadata as string) : undefined,
-      createdAt: row.created_at as string,
+      id: row["id"] as string,
+      canvasId: row["canvas_id"] as string,
+      sourceId: row["source_id"] as string,
+      targetId: row["target_id"] as string,
+      type: row["type"] as Connection["type"],
+      label: row["label"] as string | undefined,
+      metadata: row["metadata"] ? JSON.parse(row["metadata"] as string) : undefined,
+      createdAt: row["created_at"] as string,
     }))
 
     this.dispatch({ type: "SET_CONNECTIONS", payload: connections })

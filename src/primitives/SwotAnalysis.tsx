@@ -1,5 +1,3 @@
-import React from "react"
-import { Box, Text } from "@opentui/react"
 import type { Node } from "../state/types"
 
 interface SwotAnalysisProps {
@@ -10,14 +8,6 @@ interface SwotAnalysisProps {
 
 /**
  * SWOT Analysis template - 4 quadrant layout
- *
- * ┌─────────────────┬─────────────────┐
- * │   STRENGTHS     │   WEAKNESSES    │
- * │   (Internal+)   │   (Internal-)   │
- * ├─────────────────┼─────────────────┤
- * │  OPPORTUNITIES  │    THREATS      │
- * │   (External+)   │   (External-)   │
- * └─────────────────┴─────────────────┘
  */
 export function SwotAnalysis({ nodes, width = 80, height = 24 }: SwotAnalysisProps) {
   const quadrantWidth = Math.floor(width / 2)
@@ -34,7 +24,7 @@ export function SwotAnalysis({ nodes, width = 80, height = 24 }: SwotAnalysisPro
     bgColor: string,
     fgColor: string
   ) => (
-    <Box
+    <box
       width={quadrantWidth}
       height={quadrantHeight}
       backgroundColor={bgColor}
@@ -44,43 +34,38 @@ export function SwotAnalysis({ nodes, width = 80, height = 24 }: SwotAnalysisPro
       paddingLeft={1}
       paddingRight={1}
     >
-      <Text fg={fgColor} attributes={1 /* BOLD */}>
+      <text fg={fgColor} attributes={1}>
         {title}
-      </Text>
-      <Box flexDirection="column" paddingTop={1}>
-        {items.slice(0, quadrantHeight - 3).map((node, i) => (
-          <Text key={node.id} fg="#e5e7eb">
+      </text>
+      <box flexDirection="column" paddingTop={1}>
+        {items.slice(0, quadrantHeight - 3).map((node) => (
+          <text key={node.id} fg="#e5e7eb">
             • {node.content.slice(0, quadrantWidth - 5)}
-          </Text>
+          </text>
         ))}
-        {items.length === 0 && <Text fg="#6b7280">(empty)</Text>}
+        {items.length === 0 && <text fg="#6b7280">(empty)</text>}
         {items.length > quadrantHeight - 3 && (
-          <Text fg="#6b7280">+{items.length - (quadrantHeight - 3)} more</Text>
+          <text fg="#6b7280">+{items.length - (quadrantHeight - 3)} more</text>
         )}
-      </Box>
-    </Box>
+      </box>
+    </box>
   )
 
   return (
-    <Box flexDirection="column">
-      {/* Header */}
-      <Box paddingBottom={1}>
-        <Text fg="#e5e7eb" attributes={1}>
+    <box flexDirection="column">
+      <box paddingBottom={1}>
+        <text fg="#e5e7eb" attributes={1}>
           📊 SWOT Analysis
-        </Text>
-      </Box>
-
-      {/* Top row: Strengths | Weaknesses */}
-      <Box flexDirection="row">
+        </text>
+      </box>
+      <box flexDirection="row">
         {renderQuadrant("💪 STRENGTHS", strengths, "#14532d", "#22c55e")}
         {renderQuadrant("⚠️  WEAKNESSES", weaknesses, "#7f1d1d", "#ef4444")}
-      </Box>
-
-      {/* Bottom row: Opportunities | Threats */}
-      <Box flexDirection="row">
+      </box>
+      <box flexDirection="row">
         {renderQuadrant("🚀 OPPORTUNITIES", opportunities, "#1e3a5f", "#3b82f6")}
         {renderQuadrant("⛔ THREATS", threats, "#78350f", "#f59e0b")}
-      </Box>
-    </Box>
+      </box>
+    </box>
   )
 }

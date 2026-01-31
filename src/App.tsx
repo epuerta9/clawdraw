@@ -1,5 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react"
-import { Box } from "@opentui/react"
+import { useEffect, useState, useCallback } from "react"
 import { Canvas, Sidebar, StatusBar } from "./components"
 import { getStore, type AppState, type NodeType } from "./state"
 
@@ -61,9 +60,9 @@ export function App({ onQuit, onMessage }: AppProps) {
   }, [store])
 
   return (
-    <Box flexDirection="column" width="100%" height="100%">
+    <box flexDirection="column" width="100%" height="100%">
       {/* Main content area */}
-      <Box flexDirection="row" flexGrow={1}>
+      <box flexDirection="row" flexGrow={1}>
         {/* Sidebar */}
         <Sidebar
           state={state}
@@ -73,10 +72,10 @@ export function App({ onQuit, onMessage }: AppProps) {
 
         {/* Canvas */}
         <Canvas state={state} onSelectNode={handleSelectNode} />
-      </Box>
+      </box>
 
       {/* Status bar */}
       <StatusBar state={state} message={statusMessage} />
-    </Box>
+    </box>
   )
 }

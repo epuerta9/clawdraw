@@ -1,5 +1,3 @@
-import React from "react"
-import { Box, Text } from "@opentui/react"
 import type { AppState, NodeType } from "../state/types"
 
 interface SidebarProps {
@@ -18,9 +16,9 @@ const QUICK_ADD_ITEMS: { type: NodeType; label: string; key: string }[] = [
   { type: "question", label: "❓ Question", key: "q" },
 ]
 
-export function Sidebar({ state, onAddNode, onModeChange }: SidebarProps) {
+export function Sidebar({ state }: SidebarProps) {
   return (
-    <Box
+    <box
       width={24}
       height="100%"
       backgroundColor="#1f2937"
@@ -29,70 +27,70 @@ export function Sidebar({ state, onAddNode, onModeChange }: SidebarProps) {
       flexDirection="column"
     >
       {/* Header */}
-      <Box paddingLeft={1} paddingTop={1}>
-        <Text fg="#f3f4f6" attributes={1 /* BOLD */}>
+      <box paddingLeft={1} paddingTop={1}>
+        <text fg="#f3f4f6" attributes={1}>
           bizcanvas
-        </Text>
-      </Box>
+        </text>
+      </box>
 
       {/* Canvas info */}
-      <Box paddingLeft={1} paddingTop={1}>
-        <Text fg="#9ca3af">
+      <box paddingLeft={1} paddingTop={1}>
+        <text fg="#9ca3af">
           {state.currentCanvas?.name ?? "No canvas"}
-        </Text>
-      </Box>
+        </text>
+      </box>
 
       {/* Mode indicator */}
-      <Box paddingLeft={1} paddingTop={1}>
-        <Text fg="#60a5fa">
+      <box paddingLeft={1} paddingTop={1}>
+        <text fg="#60a5fa">
           Mode: {state.mode.toUpperCase()}
-        </Text>
-      </Box>
+        </text>
+      </box>
 
       {/* Divider */}
-      <Box paddingTop={1} paddingLeft={1}>
-        <Text fg="#4b5563">────────────────────</Text>
-      </Box>
+      <box paddingTop={1} paddingLeft={1}>
+        <text fg="#4b5563">────────────────────</text>
+      </box>
 
       {/* Quick add */}
-      <Box paddingLeft={1} paddingTop={1} flexDirection="column">
-        <Text fg="#e5e7eb" attributes={1}>Quick Add:</Text>
+      <box paddingLeft={1} paddingTop={1} flexDirection="column">
+        <text fg="#e5e7eb" attributes={1}>Quick Add:</text>
         {QUICK_ADD_ITEMS.map((item) => (
-          <Text key={item.type} fg="#9ca3af">
+          <text key={item.type} fg="#9ca3af">
             [{item.key}] {item.label}
-          </Text>
+          </text>
         ))}
-      </Box>
+      </box>
 
       {/* Divider */}
-      <Box paddingTop={1} paddingLeft={1}>
-        <Text fg="#4b5563">────────────────────</Text>
-      </Box>
+      <box paddingTop={1} paddingLeft={1}>
+        <text fg="#4b5563">────────────────────</text>
+      </box>
 
       {/* Mode controls */}
-      <Box paddingLeft={1} paddingTop={1} flexDirection="column">
-        <Text fg="#e5e7eb" attributes={1}>Modes:</Text>
-        <Text fg={state.mode === "view" ? "#22c55e" : "#9ca3af"}>[v] View</Text>
-        <Text fg={state.mode === "edit" ? "#22c55e" : "#9ca3af"}>[e] Edit</Text>
-        <Text fg={state.mode === "connect" ? "#22c55e" : "#9ca3af"}>[c] Connect</Text>
-        <Text fg={state.mode === "ai" ? "#22c55e" : "#9ca3af"}>[a] AI Chat</Text>
-      </Box>
+      <box paddingLeft={1} paddingTop={1} flexDirection="column">
+        <text fg="#e5e7eb" attributes={1}>Modes:</text>
+        <text fg={state.mode === "view" ? "#22c55e" : "#9ca3af"}>[v] View</text>
+        <text fg={state.mode === "edit" ? "#22c55e" : "#9ca3af"}>[e] Edit</text>
+        <text fg={state.mode === "connect" ? "#22c55e" : "#9ca3af"}>[c] Connect</text>
+        <text fg={state.mode === "ai" ? "#22c55e" : "#9ca3af"}>[a] AI Chat</text>
+      </box>
 
       {/* Divider */}
-      <Box paddingTop={1} paddingLeft={1}>
-        <Text fg="#4b5563">────────────────────</Text>
-      </Box>
+      <box paddingTop={1} paddingLeft={1}>
+        <text fg="#4b5563">────────────────────</text>
+      </box>
 
       {/* Stats */}
-      <Box paddingLeft={1} paddingTop={1} flexDirection="column">
-        <Text fg="#9ca3af">Nodes: {state.nodes.length}</Text>
-        <Text fg="#9ca3af">Links: {state.connections.length}</Text>
-      </Box>
+      <box paddingLeft={1} paddingTop={1} flexDirection="column">
+        <text fg="#9ca3af">Nodes: {state.nodes.length}</text>
+        <text fg="#9ca3af">Links: {state.connections.length}</text>
+      </box>
 
       {/* Help hint */}
-      <Box position="absolute" bottom={1} left={1}>
-        <Text fg="#6b7280">[?] Help  [Q] Quit</Text>
-      </Box>
-    </Box>
+      <box position="absolute" bottom={1} left={1}>
+        <text fg="#6b7280">[?] Help  [Q] Quit</text>
+      </box>
+    </box>
   )
 }

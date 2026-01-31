@@ -1,19 +1,17 @@
 import { createCliRenderer, type KeyEvent } from "@opentui/core"
-import { render } from "@opentui/react"
-import React from "react"
+import { createRoot } from "@opentui/react"
 import { App } from "./App"
-import { initSchema, getDb, closeDb } from "./db"
+import { initSchema, closeDb } from "./db"
 import { getStore, type NodeType } from "./state"
 
 // Node type quick-add key mappings
-const QUICK_ADD_KEYS: Record<string, NodeType> = {
+const QUICK_ADD_KEYS: Record<string, NodeType | undefined> = {
   i: "idea",
   p: "painpoint",
   o: "opportunity",
   u: "persona",
   g: "goal",
   t: "task",
-  q: "question",
 }
 
 async function main() {
@@ -46,7 +44,6 @@ async function main() {
   })
 
   const store = getStore()
-  let lastMessage = ""
 
   // Handle quit
   const quit = async () => {
@@ -57,19 +54,20 @@ async function main() {
   }
 
   // Message handler for status updates
-  const handleMessage = (msg: string) => {
-    lastMessage = msg
+  const handleMessage = (_msg: string) => {
+    // Could log to console or store for display
   }
 
-  // Render React app
-  render(<App onQuit={quit} onMessage={handleMessage} />, renderer)
+  // Render React app using createRoot
+  const root = createRoot(renderer)
+  root.render(<App onQuit={quit} onMessage={handleMessage} />)
 
   // Key handler
   renderer.keyInput.on("keypress", async (key: KeyEvent) => {
     const state = store.getState()
 
-    // Quit
-    if (key.name === "q" && !key.ctrl && !key.meta) {
+    // Quit - only 'Q' (uppercase) quits, lowercase 'q' is for question
+    if (key.name === "q" && key.shift) {
       await quit()
       return
     }
@@ -90,14 +88,14 @@ async function main() {
     }
 
     // Quick add nodes (when canvas is selected)
-    if (state.currentCanvas && QUICK_ADD_KEYS[key.name]) {
-      const type = QUICK_ADD_KEYS[key.name]
+    const nodeType = QUICK_ADD_KEYS[key.name]
+    if (state.currentCanvas && nodeType) {
       const nodeCount = state.nodes.length
       const x = (nodeCount % 4) * 220 + 50
       const y = Math.floor(nodeCount / 4) * 120 + 50
 
       try {
-        const node = await store.createNode(type, `New ${type}`, { x, y })
+        const node = await store.createNode(nodeType, `New ${nodeType}`, { x, y })
         store.dispatch({ type: "SELECT_NODE", payload: node.id })
       } catch (err) {
         console.error("Failed to create node:", err)
@@ -117,8 +115,7 @@ async function main() {
     if (key.name === "l") {
       try {
         const canvases = await store.listCanvases()
-        if (canvases.length > 0) {
-          // Load first canvas for now (TODO: canvas picker)
+        if (canvases.length > 0 && canvases[0]) {
           await store.loadCanvas(canvases[0].id)
         }
       } catch (err) {
@@ -142,10 +139,16 @@ async function main() {
 
       if (key.name === "down" || key.name === "j") {
         const nextIndex = (currentIndex + 1) % state.nodes.length
-        store.dispatch({ type: "SELECT_NODE", payload: state.nodes[nextIndex].id })
+        const nextNode = state.nodes[nextIndex]
+        if (nextNode) {
+          store.dispatch({ type: "SELECT_NODE", payload: nextNode.id })
+        }
       } else if (key.name === "up" || key.name === "k") {
         const prevIndex = currentIndex <= 0 ? state.nodes.length - 1 : currentIndex - 1
-        store.dispatch({ type: "SELECT_NODE", payload: state.nodes[prevIndex].id })
+        const prevNode = state.nodes[prevIndex]
+        if (prevNode) {
+          store.dispatch({ type: "SELECT_NODE", payload: prevNode.id })
+        }
       }
     }
 
@@ -159,7 +162,7 @@ async function main() {
   renderer.start()
 
   console.log("✓ bizcanvas ready!")
-  console.log("Press [n] to create a new canvas, [?] for help, [q] to quit")
+  console.log("Press [n] to create a new canvas, [?] for help, [Q] to quit")
 }
 
 main().catch((err) => {

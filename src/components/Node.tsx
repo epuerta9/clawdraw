@@ -1,6 +1,4 @@
-import React from "react"
-import { Box, Text } from "@opentui/react"
-import type { Node as NodeType, NodeMetadata } from "../state/types"
+import type { Node as NodeType } from "../state/types"
 
 interface NodeProps {
   node: NodeType
@@ -45,33 +43,33 @@ const NODE_ICONS: Record<string, string> = {
   journey_emotion: "😊",
 }
 
-export function NodeComponent({ node, isSelected, isFocused, onSelect }: NodeProps) {
+export function NodeComponent({ node, isSelected, isFocused }: NodeProps) {
   const bgColor = node.metadata?.color ?? NODE_COLORS[node.type] ?? "#374151"
   const icon = node.metadata?.icon ?? NODE_ICONS[node.type] ?? "📌"
   const borderColor = isSelected ? "#fbbf24" : isFocused ? "#60a5fa" : "#4b5563"
   const borderStyle = isSelected ? "double" : "single"
 
   return (
-    <Box
+    <box
       position="absolute"
       left={Math.round(node.position.x)}
       top={Math.round(node.position.y)}
-      width={Math.round(node.size.width / 8)} // Approximate char width
-      height={Math.round(node.size.height / 16)} // Approximate char height
+      width={Math.round(node.size.width / 8)}
+      height={Math.round(node.size.height / 16)}
       backgroundColor={bgColor}
       borderStyle={borderStyle}
       borderColor={borderColor}
       paddingLeft={1}
       paddingRight={1}
     >
-      <Text fg="#e5e7eb">
+      <text fg="#e5e7eb">
         {icon} {node.content.slice(0, 30)}{node.content.length > 30 ? "..." : ""}
-      </Text>
+      </text>
       {node.metadata?.priority && (
-        <Text fg="#9ca3af" position="absolute" right={1} top={0}>
+        <text fg="#9ca3af" position="absolute" right={1} top={0}>
           [{node.metadata.priority.charAt(0).toUpperCase()}]
-        </Text>
+        </text>
       )}
-    </Box>
+    </box>
   )
 }

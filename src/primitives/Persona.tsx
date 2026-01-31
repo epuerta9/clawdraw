@@ -1,6 +1,3 @@
-import React from "react"
-import { Box, Text } from "@opentui/react"
-
 interface PersonaData {
   name: string
   role: string
@@ -25,26 +22,12 @@ interface PersonaProps {
 
 /**
  * Persona Card template
- *
- * ┌────────────────────────────────────┐
- * │  👤 Sarah Chen                     │
- * │  Product Manager @ TechCorp        │
- * ├────────────────────────────────────┤
- * │  "I need tools that help me..."    │
- * ├────────────────────────────────────┤
- * │  DEMOGRAPHICS    │  GOALS          │
- * │  Age: 32         │  • Goal 1       │
- * │  Location: SF    │  • Goal 2       │
- * ├────────────────────────────────────┤
- * │  PAIN POINTS     │  MOTIVATIONS    │
- * │  🔥 Pain 1       │  ⭐ Motivation  │
- * └────────────────────────────────────┘
  */
 export function PersonaCard({ persona, width = 60 }: PersonaProps) {
   const halfWidth = Math.floor((width - 4) / 2)
 
   return (
-    <Box
+    <box
       width={width}
       backgroundColor="#1f2937"
       borderStyle="double"
@@ -52,62 +35,62 @@ export function PersonaCard({ persona, width = 60 }: PersonaProps) {
       flexDirection="column"
     >
       {/* Header */}
-      <Box paddingLeft={1} paddingTop={1} paddingBottom={1} backgroundColor="#374151">
-        <Text fg="#e5e7eb" attributes={1}>
+      <box paddingLeft={1} paddingTop={1} paddingBottom={1} backgroundColor="#374151">
+        <text fg="#e5e7eb" attributes={1}>
           {persona.avatar ?? "👤"} {persona.name}
-        </Text>
-      </Box>
-      <Box paddingLeft={1} backgroundColor="#374151">
-        <Text fg="#9ca3af">{persona.role}</Text>
-      </Box>
+        </text>
+      </box>
+      <box paddingLeft={1} backgroundColor="#374151">
+        <text fg="#9ca3af">{persona.role}</text>
+      </box>
 
       {/* Quote */}
       {persona.quote && (
-        <Box paddingLeft={1} paddingTop={1} paddingBottom={1}>
-          <Text fg="#a78bfa" attributes={2 /* ITALIC */}>
+        <box paddingLeft={1} paddingTop={1} paddingBottom={1}>
+          <text fg="#a78bfa" attributes={2}>
             "{persona.quote.slice(0, width - 6)}"
-          </Text>
-        </Box>
+          </text>
+        </box>
       )}
 
       {/* Demographics + Goals */}
-      <Box flexDirection="row" paddingTop={1}>
-        <Box width={halfWidth} paddingLeft={1} flexDirection="column">
-          <Text fg="#60a5fa" attributes={1}>DEMOGRAPHICS</Text>
+      <box flexDirection="row" paddingTop={1}>
+        <box width={halfWidth} paddingLeft={1} flexDirection="column">
+          <text fg="#60a5fa" attributes={1}>DEMOGRAPHICS</text>
           {persona.demographics?.age && (
-            <Text fg="#9ca3af">Age: {persona.demographics.age}</Text>
+            <text fg="#9ca3af">Age: {persona.demographics.age}</text>
           )}
           {persona.demographics?.location && (
-            <Text fg="#9ca3af">📍 {persona.demographics.location}</Text>
+            <text fg="#9ca3af">📍 {persona.demographics.location}</text>
           )}
           {persona.demographics?.income && (
-            <Text fg="#9ca3af">💰 {persona.demographics.income}</Text>
+            <text fg="#9ca3af">💰 {persona.demographics.income}</text>
           )}
-        </Box>
-        <Box width={halfWidth} paddingLeft={1} flexDirection="column">
-          <Text fg="#22c55e" attributes={1}>GOALS</Text>
+        </box>
+        <box width={halfWidth} paddingLeft={1} flexDirection="column">
+          <text fg="#22c55e" attributes={1}>GOALS</text>
           {persona.goals.slice(0, 3).map((goal, i) => (
-            <Text key={i} fg="#9ca3af">🎯 {goal.slice(0, halfWidth - 4)}</Text>
+            <text key={i} fg="#9ca3af">🎯 {goal.slice(0, halfWidth - 4)}</text>
           ))}
-        </Box>
-      </Box>
+        </box>
+      </box>
 
       {/* Pain Points + Motivations */}
-      <Box flexDirection="row" paddingTop={1} paddingBottom={1}>
-        <Box width={halfWidth} paddingLeft={1} flexDirection="column">
-          <Text fg="#ef4444" attributes={1}>PAIN POINTS</Text>
+      <box flexDirection="row" paddingTop={1} paddingBottom={1}>
+        <box width={halfWidth} paddingLeft={1} flexDirection="column">
+          <text fg="#ef4444" attributes={1}>PAIN POINTS</text>
           {persona.painPoints.slice(0, 3).map((pain, i) => (
-            <Text key={i} fg="#9ca3af">🔥 {pain.slice(0, halfWidth - 4)}</Text>
+            <text key={i} fg="#9ca3af">🔥 {pain.slice(0, halfWidth - 4)}</text>
           ))}
-        </Box>
-        <Box width={halfWidth} paddingLeft={1} flexDirection="column">
-          <Text fg="#fbbf24" attributes={1}>MOTIVATIONS</Text>
+        </box>
+        <box width={halfWidth} paddingLeft={1} flexDirection="column">
+          <text fg="#fbbf24" attributes={1}>MOTIVATIONS</text>
           {persona.motivations.slice(0, 3).map((mot, i) => (
-            <Text key={i} fg="#9ca3af">⭐ {mot.slice(0, halfWidth - 4)}</Text>
+            <text key={i} fg="#9ca3af">⭐ {mot.slice(0, halfWidth - 4)}</text>
           ))}
-        </Box>
-      </Box>
-    </Box>
+        </box>
+      </box>
+    </box>
   )
 }
 

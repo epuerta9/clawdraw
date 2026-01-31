@@ -1,5 +1,3 @@
-import React from "react"
-import { Box, Text } from "@opentui/react"
 import type { AppState } from "../state/types"
 
 interface StatusBarProps {
@@ -11,7 +9,7 @@ export function StatusBar({ state, message }: StatusBarProps) {
   const selectedNode = state.nodes.find((n) => n.id === state.selectedNodeId)
 
   return (
-    <Box
+    <box
       height={1}
       backgroundColor="#1f2937"
       borderStyle="single"
@@ -21,27 +19,27 @@ export function StatusBar({ state, message }: StatusBarProps) {
       paddingRight={1}
     >
       {/* Mode */}
-      <Text fg="#60a5fa">[{state.mode.toUpperCase()}]</Text>
+      <text fg="#60a5fa">[{state.mode.toUpperCase()}]</text>
 
       {/* Selected node info */}
       {selectedNode && (
-        <Text fg="#9ca3af" paddingLeft={2}>
+        <text fg="#9ca3af" paddingLeft={2}>
           Selected: {selectedNode.type} - "{selectedNode.content.slice(0, 20)}..."
-        </Text>
+        </text>
       )}
 
       {/* Message */}
       {message && (
-        <Text fg="#fbbf24" paddingLeft={2}>
+        <text fg="#fbbf24" paddingLeft={2}>
           {message}
-        </Text>
+        </text>
       )}
 
       {/* Right side - help */}
-      <Box flexGrow={1} />
-      <Text fg="#6b7280">
+      <box flexGrow={1} />
+      <text fg="#6b7280">
         ? Help | Ctrl+S Save | Q Quit
-      </Text>
-    </Box>
+      </text>
+    </box>
   )
 }
