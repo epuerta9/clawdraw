@@ -11,49 +11,20 @@ bun add -g github:epuerta9/clawdraw
 
 ## Commands
 
-### /canvas create <template> "<name>"
-Create a new canvas.
-
-**Templates:** `swot`, `bmc`, `lean`, `empathy`, `journey`, `kanban`, `brainstorm`, `mindmap`, `personas`
-
-### /canvas add <zone> "<content>"
-Add content to a zone.
-
-### /canvas view
-Display the canvas.
-
-### /canvas list
-List all canvases.
-
-### /canvas join <room-id>
-Join a real-time collaborative room.
-
-## Instructions
-
-### /canvas create
+### Create a room
 ```bash
-clawdraw new <template> "<name>"
+clawdraw create "<name>" [template]
 ```
-Save the returned canvas ID for subsequent commands.
+Templates: `swot`, `bmc`, `lean`, `kanban`, `empathy`, `journey`, `brainstorm`
 
-### /canvas add
+### Push items to room (syncs to all viewers)
 ```bash
-clawdraw add <canvas-id> <zone> "<content>"
+clawdraw push <room-id> <zone> "<content>"
 ```
 
-### /canvas view
+### List rooms
 ```bash
-clawdraw view <canvas-id>
-```
-
-### /canvas list
-```bash
-clawdraw view
-```
-
-### /canvas join
-```bash
-clawdraw join <room-id>
+clawdraw rooms
 ```
 
 ## Template Zones
@@ -66,36 +37,46 @@ clawdraw join <room-id>
 
 **Kanban:** `backlog`, `todo`, `in_progress`, `done`
 
-**Empathy:** `thinks_feels`, `sees`, `persona`, `hears`, `says_does`
-
-## Example Session
-
-```
-User: Create a SWOT analysis for our Q1 strategy
-→ clawdraw new swot "Q1 Strategy"
-→ Canvas created: abc123
-
-User: Add to strengths: Strong engineering team
-→ clawdraw add abc123 strengths "Strong engineering team"
-
-User: Add weakness: Limited budget
-→ clawdraw add abc123 weaknesses "Limited budget"
-
-User: Show me the canvas
-→ clawdraw view abc123
-```
-
-## Collaboration
-
-For real-time collaboration with multiple users:
+## Example: SWOT Analysis
 
 ```bash
-# Login first
-clawdraw login
+# Create a room
+clawdraw create "Q1 Product Strategy" swot
+# Returns room ID, e.g., abc123
 
-# Create online room
-clawdraw create "Team Strategy" swot
+# User opens whiteboard in another terminal:
+# clawdraw join abc123
 
-# Share room ID with others
-clawdraw join <room-id>
+# Push items (auto-syncs to whiteboard viewer)
+clawdraw push abc123 strengths "Experienced engineering team"
+clawdraw push abc123 strengths "Strong brand recognition"
+clawdraw push abc123 weaknesses "Limited marketing budget"
+clawdraw push abc123 weaknesses "Small sales team"
+clawdraw push abc123 opportunities "Emerging AI market"
+clawdraw push abc123 opportunities "International expansion"
+clawdraw push abc123 threats "New competitor funding"
+clawdraw push abc123 threats "Economic uncertainty"
 ```
+
+## Example: Business Model Canvas
+
+```bash
+clawdraw create "Startup BMC" bmc
+# Returns room ID
+
+clawdraw push <id> value_props "AI-powered automation"
+clawdraw push <id> customer_seg "Enterprise SaaS companies"
+clawdraw push <id> channels "Direct sales, partnerships"
+clawdraw push <id> revenue_streams "Subscription, usage-based"
+clawdraw push <id> key_activities "Product development, support"
+clawdraw push <id> key_resources "Engineering team, cloud infra"
+clawdraw push <id> key_partners "Cloud providers, integrations"
+clawdraw push <id> cost_structure "Engineering, infrastructure, sales"
+```
+
+## Workflow
+
+1. **Create room** → Get room ID
+2. **User opens viewer** → `clawdraw join <room-id>` (in separate terminal)
+3. **Claude pushes items** → Changes appear instantly on viewer
+4. **Real-time collaboration** → Multiple viewers see same updates

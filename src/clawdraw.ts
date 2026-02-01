@@ -325,7 +325,7 @@ async function cmdJoin(roomId: string) {
 }
 
 async function cmdAdd(canvasId: string, zone: string, content: string) {
-  // Run the canvas quick command
+  // Run the canvas quick command (local)
   const proc = Bun.spawn(["bun", "run", "canvas", "quick", canvasId, zone, content], {
     cwd: import.meta.dir.replace("/src", ""),
     stdin: "inherit",
@@ -333,6 +333,52 @@ async function cmdAdd(canvasId: string, zone: string, content: string) {
     stderr: "inherit",
   })
   await proc.exited
+}
+
+async function cmdPush(roomId: string, zone: string, content: string) {
+  // Push item to server room via WebSocket
+  const config = loadConfig()
+  const wsUrl = config.serverUrl
+    .replace("https://", "wss://")
+    .replace("http://", "ws://")
+
+  const { createCollabClient } = await import("./collab/client")
+
+  console.log(`📤 Pushing to room ${roomId}...`)
+
+  const client = createCollabClient(`${wsUrl}/ws`, roomId)
+
+  // Wait for connection
+  await new Promise<void>((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error("Connection timeout")), 10000)
+
+    client.onConnected(() => {
+      clearTimeout(timeout)
+
+      // Add the node
+      const nodeId = Math.random().toString(36).slice(2, 10)
+      client.addNode({
+        id: nodeId,
+        noteId: content,
+        x: Math.floor(Math.random() * 50),
+        y: Math.floor(Math.random() * 20),
+        zoneId: zone,
+      })
+
+      console.log(`✓ Added to ${zone}: "${content}"`)
+
+      // Give Y.js time to sync
+      setTimeout(() => {
+        client.disconnect()
+        resolve()
+      }, 500)
+    })
+
+    client.onDisconnected(() => {
+      clearTimeout(timeout)
+      reject(new Error("Disconnected"))
+    })
+  })
 }
 
 async function cmdView(canvasId?: string) {
@@ -361,33 +407,33 @@ function printHelp() {
 🎨 ClawDraw - Terminal Whiteboard for AI
 
 Usage:
-  clawdraw board              Open local board (offline mode)
-  clawdraw new <template> <name>  Create new canvas (swot, bmc, kanban)
-  clawdraw add <id> <zone> <text> Add item to canvas zone
-  clawdraw view [id]          View canvas or list all
-  clawdraw join <room-id>     Join a collaborative room
-  clawdraw rooms              List your online rooms
-  clawdraw create <name>      Create online room
-  clawdraw login              Login via GitHub
-  clawdraw logout             Clear saved credentials
-  clawdraw status             Show connection status
-  clawdraw help               Show this help
+  clawdraw join <room-id>           Open live whiteboard (view only)
+  clawdraw push <room-id> <zone> <text>  Push item to room (syncs to viewers)
+  clawdraw create <name> [template] Create online room
+  clawdraw rooms                    List your online rooms
+  clawdraw login                    Login via GitHub
+  clawdraw status                   Show connection status
 
-Local Examples:
-  clawdraw new swot "Q1 Strategy"          # Create SWOT canvas
-  clawdraw add abc123 strengths "AI team"  # Add to strengths
-  clawdraw view abc123                     # View canvas
-  clawdraw board                           # Open live view
+Local Mode (offline):
+  clawdraw new <template> <name>    Create local canvas
+  clawdraw add <id> <zone> <text>   Add item to local canvas
+  clawdraw view [id]                View local canvas
+  clawdraw board                    Open local board
 
-Online Examples:
-  clawdraw login                           # Login to collaborate
-  clawdraw create "Team SWOT" swot         # Create online room
-  clawdraw join abc123                     # Join existing room
+Collaboration Example:
+  # Terminal 1: Open whiteboard viewer
+  clawdraw join abc123
+
+  # Terminal 2: Claude pushes items (auto-syncs to viewer)
+  clawdraw push abc123 strengths "Strong engineering team"
+  clawdraw push abc123 weaknesses "Limited budget"
+  clawdraw push abc123 opportunities "New market expansion"
+
+Templates: swot, bmc, lean, kanban, empathy, journey, brainstorm
+SWOT zones: strengths, weaknesses, opportunities, threats
 
 Environment:
   CLAWDRAW_SERVER   Server URL (default: https://clawdraw.cloudshipai.com)
-
-Config: ~/.clawdraw/config.json
 `)
 }
 
@@ -456,6 +502,16 @@ switch (command) {
 
   case "view":
     await cmdView(args[1])
+    break
+
+  case "push":
+    if (!args[1] || !args[2] || !args[3]) {
+      console.log("\n❌ Usage: clawdraw push <room-id> <zone> <content>")
+      console.log("   Push item to online room (syncs to all connected viewers)")
+      console.log("   Zones for SWOT: strengths, weaknesses, opportunities, threats\n")
+      process.exit(1)
+    }
+    await cmdPush(args[1], args[2], args.slice(3).join(" "))
     break
 
   case "help":
