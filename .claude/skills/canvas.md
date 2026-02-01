@@ -2,66 +2,100 @@
 
 Create and collaborate on AI canvases - SWOT, Business Model Canvas, Lean Canvas, and more.
 
+## Prerequisites
+
+Install ClawDraw globally:
+```bash
+bun add -g github:epuerta9/clawdraw
+```
+
 ## Commands
 
 ### /canvas create <template> "<name>"
-Create a new canvas. Templates: swot, bmc, lean, empathy, journey, kanban, brainstorm, mindmap, personas
+Create a new canvas.
+
+**Templates:** `swot`, `bmc`, `lean`, `empathy`, `journey`, `kanban`, `brainstorm`, `mindmap`, `personas`
 
 ### /canvas add <zone> "<content>"
-Add content to a zone. Zones for SWOT: strengths, weaknesses, opportunities, threats
+Add content to a zone.
 
 ### /canvas view
-Display the canvas in retro ASCII style.
+Display the canvas.
 
 ### /canvas list
 List all canvases.
 
-### /canvas collab <room-id>
-Join a real-time collaborative room on ClawDraw server.
+### /canvas join <room-id>
+Join a real-time collaborative room.
 
 ## Instructions
 
-**Working directory:** `cd /home/epuerta/sandbox/cloudship-sandbox/clawdraw-app`
-
 ### /canvas create
 ```bash
-bun run canvas create <template> "<name>"
+clawdraw new <template> "<name>"
 ```
+Save the returned canvas ID for subsequent commands.
 
 ### /canvas add
 ```bash
-bun run canvas quick <canvas-id> <zone> "<content>"
+clawdraw add <canvas-id> <zone> "<content>"
 ```
 
 ### /canvas view
 ```bash
-bun run canvas view <canvas-id>
+clawdraw view <canvas-id>
 ```
 
-### /canvas collab
+### /canvas list
 ```bash
-bun run collab <room-id> --name "Claude-Agent"
+clawdraw view
 ```
 
-## User Flow
+### /canvas join
+```bash
+clawdraw join <room-id>
+```
 
-1. **Login:** Visit http://localhost:1235/auth/github
-2. **Dashboard:** See your rooms at /dashboard
-3. **Create Room:** Click "+ Create Room" or use API
-4. **Join Room:** Copy the join command and run it
-5. **Collaborate:** Multiple Claudes can join the same room
-6. **View Web:** Visit /room/<id> to see the web view
-7. **Export:** Download as Markdown from web view
+## Template Zones
 
-## Example
+**SWOT:** `strengths`, `weaknesses`, `opportunities`, `threats`
+
+**BMC:** `key_partners`, `key_activities`, `key_resources`, `value_props`, `customer_rel`, `channels`, `customer_seg`, `cost_structure`, `revenue_streams`
+
+**Lean:** `problem`, `solution`, `unique_value`, `unfair_advantage`, `customer_segments`, `key_metrics`, `channels`, `cost_structure`, `revenue_streams`
+
+**Kanban:** `backlog`, `todo`, `in_progress`, `done`
+
+**Empathy:** `thinks_feels`, `sees`, `persona`, `hears`, `says_does`
+
+## Example Session
 
 ```
-User: /canvas create swot "Q1 Strategy"
-→ bun run canvas create swot "Q1 Strategy"
+User: Create a SWOT analysis for our Q1 strategy
+→ clawdraw new swot "Q1 Strategy"
+→ Canvas created: abc123
 
-User: /canvas add strengths "Strong engineering team"
-→ bun run canvas quick <id> strengths "Strong engineering team"
+User: Add to strengths: Strong engineering team
+→ clawdraw add abc123 strengths "Strong engineering team"
 
-User: /canvas view
-→ bun run canvas view <id>
+User: Add weakness: Limited budget
+→ clawdraw add abc123 weaknesses "Limited budget"
+
+User: Show me the canvas
+→ clawdraw view abc123
+```
+
+## Collaboration
+
+For real-time collaboration with multiple users:
+
+```bash
+# Login first
+clawdraw login
+
+# Create online room
+clawdraw create "Team Strategy" swot
+
+# Share room ID with others
+clawdraw join <room-id>
 ```
