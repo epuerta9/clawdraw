@@ -1,82 +1,90 @@
-# bizcanvas
+# ClawDraw
 
-Business canvas skill for Claude Code - organize ideas, personas, SWOT analyses, and mind maps with persistent storage and cross-session linking.
+**Terminal whiteboard for AI collaboration** - Create SWOT analyses, Business Model Canvases, and more directly from your terminal.
 
-## What it does
+## Quick Install
 
-- **Capture ideas** conversationally through Claude Code
-- **Build personas** with goals, pain points, demographics
-- **SWOT analysis** with 4-quadrant visualization
-- **Link ideas** with labeled relationships
-- **Tag and organize** across projects
-- **Persist** everything in Turso (SQLite) across sessions
-
-## Setup
-
-1. Install dependencies:
 ```bash
-cd bizcanvas
-bun install
+# Install globally from GitHub (recommended)
+bun add -g github:epuerta9/clawdraw-app
+
+# Then run
+clawdraw help
 ```
 
-2. Configure Turso (already done if you followed setup):
-```bash
-cp .env.example .env
-# Add your TURSO_DATABASE_URL and TURSO_AUTH_TOKEN
-```
+> **Requires [Bun](https://bun.sh):** `curl -fsSL https://bun.sh/install | bash`
 
 ## Usage
 
-### In Claude Code (primary way)
+```bash
+# Create a SWOT analysis
+clawdraw new swot "Q1 Strategy"
 
+# Add items to zones
+clawdraw add <id> strengths "Strong engineering team"
+clawdraw add <id> weaknesses "Limited market reach"
+
+# View the canvas
+clawdraw view <id>
+
+# Open live terminal whiteboard
+clawdraw board
 ```
-/bizcanvas
-```
 
-Then just talk - "I want to create a persona for PlateIQ", "Let's do a SWOT analysis", "Link this to the coach persona", etc.
+## Commands
 
-### CLI (for viewing)
+### Local Mode (No Account)
+
+| Command | Description |
+|---------|-------------|
+| `clawdraw board` | Open interactive terminal whiteboard |
+| `clawdraw new <template> <name>` | Create new canvas |
+| `clawdraw add <id> <zone> <text>` | Add item to canvas zone |
+| `clawdraw view [id]` | View canvas or list all |
+
+**Templates:** `swot`, `bmc`, `lean`, `kanban`, `brainstorm`
+
+**SWOT Zones:** `strengths`, `weaknesses`, `opportunities`, `threats`
+
+### Online Mode (GitHub Login)
+
+| Command | Description |
+|---------|-------------|
+| `clawdraw login` | Login via GitHub OAuth |
+| `clawdraw create <name> [template]` | Create online room |
+| `clawdraw rooms` | List your rooms |
+| `clawdraw join <room-id>` | Join collaborative room |
+
+## Claude Code Integration
+
+ClawDraw includes a skill for Claude Code:
 
 ```bash
-# List all notes
-bun run cli list
-
-# List by type
-bun run cli list persona
-
-# Show a note
-bun run cli show <id-prefix>
-
-# Show connections
-bun run cli links <id-prefix>
-
-# Search
-bun run cli search "keyword"
-
-# Show SWOT
-bun run cli swot <collection-id>
-
-# Export all data
-bun run cli export
+# Install skill
+cp .claude/skills/canvas.md ~/.claude/skills/clawdraw.md
 ```
 
-## Data Model
+Then ask Claude:
+> "Create a SWOT analysis for our product launch"
 
-**Notes** - The core unit. Types:
-- `note` 📝 - General notes
-- `idea` 💡 - Ideas and concepts
-- `persona` 👤 - User personas
-- `painpoint` 🔥 - Pain points
-- `goal` 🎯 - Goals
-- `question` ❓ - Questions
-- `swot_s/w/o/t` - SWOT quadrants
+## Development
 
-**Links** - Bidirectional relationships between notes with optional labels
+```bash
+# Clone
+git clone https://github.com/epuerta9/clawdraw-app.git
+cd clawdraw-app
 
-**Collections** - Groups of notes (canvas, mindmap, swot, persona_set, project)
+# Install (requires Bun)
+bun install
 
-**Tags** - Cross-cutting organization
+# Run
+bun run clawdraw help
+```
 
-## Storage
+## Server
 
-Data stored in Turso at `libsql://bizcanvas-epuerta.aws-us-east-2.turso.io`
+Online collaboration powered by https://clawdraw.cloudshipai.com
+
+## License
+
+MIT

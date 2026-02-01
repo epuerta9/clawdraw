@@ -2,6 +2,7 @@
 import { initSchema, getDb, closeDb } from "./db"
 import * as service from "./service"
 import * as render from "./render"
+import * as retro from "./render-retro"
 
 const args = process.argv.slice(2)
 const command = args[0]
@@ -11,6 +12,109 @@ async function main() {
   await initSchema()
 
   switch (command) {
+    // ═══════════════════════════════════════════════════════════════
+    // RETRO 8-BIT VIEW COMMANDS (for Claude to display)
+    // ═══════════════════════════════════════════════════════════════
+
+    case "retro":
+    case "r": {
+      // Show retro dashboard with header + notes list
+      const notes = await service.listNotes(undefined, 20)
+      console.log(retro.renderRetroHeader("BIZCANVAS", `${notes.length} notes in database`))
+      console.log()
+      console.log(retro.renderRetroList(notes))
+      break
+    }
+
+    case "retro-list":
+    case "rl": {
+      const type = args[1] as service.NoteType | undefined
+      const notes = await service.listNotes(type, 20)
+      const subtitle = type ? `filtered: ${type}` : `${notes.length} notes`
+      console.log(retro.renderRetroHeader("BIZCANVAS", subtitle))
+      console.log()
+      console.log(retro.renderRetroList(notes))
+      break
+    }
+
+    case "retro-show":
+    case "rs": {
+      const id = args[1]
+      if (!id) {
+        console.error("Usage: bizcanvas retro-show <id>")
+        process.exit(1)
+      }
+      const notes = await service.listNotes(undefined, 100)
+      const note = notes.find((n) => n.id.startsWith(id))
+      if (!note) {
+        console.error(`Note not found: ${id}`)
+        process.exit(1)
+      }
+      console.log(retro.renderRetroHeader("BIZCANVAS", "note detail"))
+      console.log()
+      console.log(retro.renderRetroDetail(note))
+      break
+    }
+
+    case "retro-links":
+    case "rx": {
+      const id = args[1]
+      if (!id) {
+        console.error("Usage: bizcanvas retro-links <id>")
+        process.exit(1)
+      }
+      const notes = await service.listNotes(undefined, 100)
+      const note = notes.find((n) => n.id.startsWith(id))
+      if (!note) {
+        console.error(`Note not found: ${id}`)
+        process.exit(1)
+      }
+      const linked = await service.getLinkedNotes(note.id)
+      console.log(retro.renderRetroHeader("BIZCANVAS", "connections"))
+      console.log()
+      console.log(retro.renderRetroLinks(note, linked))
+      break
+    }
+
+    case "retro-swot":
+    case "rw": {
+      const collectionId = args[1]
+      // If no ID, find first SWOT collection
+      const collections = await service.listCollections("swot")
+      let collection = collectionId
+        ? collections.find((c) => c.id.startsWith(collectionId))
+        : collections[0]
+
+      if (!collection) {
+        console.error(collectionId ? `SWOT not found: ${collectionId}` : "No SWOT collections found")
+        process.exit(1)
+      }
+      const notes = await service.getCollectionNotes(collection.id)
+      console.log(retro.renderRetroHeader("BIZCANVAS", "swot analysis"))
+      console.log()
+      console.log(retro.renderRetroSWOT(
+        collection.name,
+        notes.filter((n) => n.type === "swot_s"),
+        notes.filter((n) => n.type === "swot_w"),
+        notes.filter((n) => n.type === "swot_o"),
+        notes.filter((n) => n.type === "swot_t")
+      ))
+      break
+    }
+
+    case "retro-collections":
+    case "rc": {
+      const collections = await service.listCollections()
+      console.log(retro.renderRetroHeader("BIZCANVAS", `${collections.length} collections`))
+      console.log()
+      console.log(retro.renderRetroCollections(collections))
+      break
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // PLAIN TEXT COMMANDS (original)
+    // ═══════════════════════════════════════════════════════════════
+
     case "list":
     case "ls": {
       const type = args[1] as service.NoteType | undefined
@@ -127,8 +231,16 @@ async function main() {
       console.log(`
 bizcanvas - Business canvas CLI
 
-Commands:
-  list [type]        List notes (optionally filter by type)
+═══ RETRO 8-BIT VIEW (recommended) ═══
+  retro, r              Dashboard with notes list
+  retro-list, rl [type] List notes with retro styling
+  retro-show, rs <id>   Show note detail
+  retro-links, rx <id>  Show connections graph
+  retro-swot, rw [id]   Show SWOT analysis
+  retro-collections, rc List collections
+
+═══ PLAIN TEXT ═══
+  list [type]        List notes
   show <id>          Show a note
   links <id>         Show linked notes
   search <query>     Search notes
@@ -136,12 +248,10 @@ Commands:
   swot <id>          Render SWOT analysis
   tag <name>         Show notes with tag
   export             Export all data as JSON
-  help               Show this help
 
 Note types: note, idea, persona, painpoint, goal, question, swot_s, swot_w, swot_o, swot_t
 
-This CLI is for viewing data. Use the Claude Code /bizcanvas skill
-to create and manage notes conversationally.
+Use /bizcanvas skill in Claude Code to create and manage notes conversationally.
 `)
   }
 
