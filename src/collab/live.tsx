@@ -1,263 +1,191 @@
 #!/usr/bin/env bun
 /**
- * Collaborative Live Canvas
+ * Collaborative Live Canvas - Simple Terminal Mode
  *
- * Connect to bizcanvas-server and collaborate with other Claude instances.
- * Each user shows up as a colored cursor on the canvas.
+ * Connect to ClawDraw server and collaborate in real-time.
+ * Uses simple text output instead of TUI for compatibility.
  *
- * Usage: bun run collab:live <room-id> [--name "Claude-1"] [--server ws://localhost:1234]
+ * Usage: bun run src/collab/live.tsx <room-id> [--server wss://...]
  */
 
-import { createCliRenderer, type KeyEvent } from "@opentui/core"
-import { createRoot } from "@opentui/react"
-import { CollabClient, createCollabClient, type CollabUser } from "./client"
-import { getTemplate, TEMPLATES, type Template } from "../canvas/types"
-import { initSchema } from "../db"
-import * as noteService from "../service"
-import type { Note } from "../service"
+import { createCollabClient, type CollabUser } from "./client"
+import { getTemplate } from "../canvas/types"
+import readline from "readline"
 
 // Parse args
 const args = process.argv.slice(2)
 const roomId = args.find(a => !a.startsWith("--")) || "default"
-const nameArg = args.indexOf("--name")
-const userName = nameArg !== -1 ? args[nameArg + 1] : undefined
 const serverArg = args.indexOf("--server")
-const defaultServer = process.env.CLAWDRAW_SERVER || "wss://clawdraw.cloudshipai.com"
+const defaultServer = process.env.CLAWDRAW_SERVER || "wss://clawdraw.cloudshipai.com/ws"
 const serverUrl = serverArg !== -1 ? args[serverArg + 1] : defaultServer
 
-// Load env
-async function loadEnv() {
-  const envPath = new URL("../../.env", import.meta.url).pathname
-  const envFile = Bun.file(envPath)
-  if (await envFile.exists()) {
-    const text = await envFile.text()
-    for (const line of text.split("\n")) {
-      const trimmed = line.trim()
-      if (trimmed && !trimmed.startsWith("#")) {
-        const [key, ...valueParts] = trimmed.split("=")
-        if (key) process.env[key] = valueParts.join("=")
-      }
-    }
-  }
+// ANSI colors
+const colors = {
+  reset: "\x1b[0m",
+  bright: "\x1b[1m",
+  dim: "\x1b[2m",
+  green: "\x1b[32m",
+  yellow: "\x1b[33m",
+  blue: "\x1b[34m",
+  magenta: "\x1b[35m",
+  cyan: "\x1b[36m",
+  red: "\x1b[31m",
 }
 
-interface ViewerState {
-  connected: boolean
-  users: CollabUser[]
-  canvas: { id: string; name: string; templateId: string } | null
-  template: Template | null
-  nodes: Array<{ id: string; noteId: string; x: number; y: number; zoneId?: string; color?: string }>
-  notes: Map<string, Note>
-  cursor: { x: number; y: number }
-  message: string
+function clearScreen() {
+  process.stdout.write("\x1b[2J\x1b[H")
+}
+
+function printHeader(connected: boolean, users: CollabUser[]) {
+  console.log(`${colors.yellow}╔════════════════════════════════════════════════════════╗${colors.reset}`)
+  console.log(`${colors.yellow}║${colors.reset}  ${colors.bright}🎨 CLAWDRAW COLLAB${colors.reset}                                   ${colors.yellow}║${colors.reset}`)
+  console.log(`${colors.yellow}║${colors.reset}  Room: ${colors.cyan}${roomId.slice(0, 40)}${colors.reset}${" ".repeat(Math.max(0, 40 - roomId.length))}   ${colors.yellow}║${colors.reset}`)
+  console.log(`${colors.yellow}║${colors.reset}  Status: ${connected ? `${colors.green}● CONNECTED${colors.reset}` : `${colors.red}○ CONNECTING${colors.reset}`}                              ${colors.yellow}║${colors.reset}`)
+  console.log(`${colors.yellow}╠════════════════════════════════════════════════════════╣${colors.reset}`)
+  console.log(`${colors.yellow}║${colors.reset}  ${colors.bright}Users Online:${colors.reset} ${users.length}                                    ${colors.yellow}║${colors.reset}`)
+  for (const user of users.slice(0, 5)) {
+    const name = user.name.slice(0, 20).padEnd(20)
+    console.log(`${colors.yellow}║${colors.reset}    ${colors.cyan}●${colors.reset} ${name}                              ${colors.yellow}║${colors.reset}`)
+  }
+  if (users.length > 5) {
+    console.log(`${colors.yellow}║${colors.reset}    ${colors.dim}... and ${users.length - 5} more${colors.reset}                                  ${colors.yellow}║${colors.reset}`)
+  }
+  console.log(`${colors.yellow}╚════════════════════════════════════════════════════════╝${colors.reset}`)
+}
+
+function printHelp() {
+  console.log(`
+${colors.dim}Commands:${colors.reset}
+  ${colors.cyan}/add <zone> <text>${colors.reset}  - Add item to zone
+  ${colors.cyan}/list${colors.reset}               - List all items
+  ${colors.cyan}/users${colors.reset}              - Show connected users
+  ${colors.cyan}/quit${colors.reset}               - Exit
+
+${colors.dim}SWOT zones: strengths, weaknesses, opportunities, threats${colors.reset}
+`)
 }
 
 async function main() {
-  await loadEnv()
-  await initSchema()
+  console.log(`\n${colors.cyan}🔗 Connecting to ${serverUrl}/${roomId}...${colors.reset}\n`)
 
-  console.log(`🔗 Connecting to ${serverUrl}/${roomId}...`)
+  const client = createCollabClient(serverUrl!, roomId)
 
-  const renderer = await createCliRenderer({ targetFps: 15 })
-
-  // Load notes from local DB
-  const allNotes = await noteService.listNotes(undefined, 1000)
-  const notesMap = new Map(allNotes.map(n => [n.id, n]))
-
-  const state: ViewerState = {
-    connected: false,
-    users: [],
-    canvas: null,
-    template: null,
-    nodes: [],
-    notes: notesMap,
-    cursor: { x: 40, y: 15 },
-    message: "Connecting...",
-  }
-
-  // Create Y.js client
-  const client = createCollabClient(serverUrl!, roomId, userName)
+  let connected = false
+  let users: CollabUser[] = []
+  let nodes: any[] = []
 
   client.onConnected(() => {
-    state.connected = true
-    state.canvas = client.getCanvas()
-    state.template = state.canvas ? getTemplate(state.canvas.templateId) ?? null : null
-    state.nodes = client.getNodes()
-    state.message = `Connected to room: ${roomId}`
-    render()
+    connected = true
+    clearScreen()
+    printHeader(connected, users)
+    printHelp()
+    console.log(`${colors.green}✓ Connected! You can now collaborate in real-time.${colors.reset}\n`)
   })
 
   client.onDisconnected(() => {
-    state.connected = false
-    state.message = "Disconnected - reconnecting..."
-    render()
+    connected = false
+    console.log(`\n${colors.red}⚠ Disconnected - attempting to reconnect...${colors.reset}`)
   })
 
-  client.onUsers((users) => {
-    state.users = users
-    render()
+  client.onUsers((newUsers) => {
+    const oldCount = users.length
+    users = newUsers
+    if (connected && users.length !== oldCount) {
+      console.log(`${colors.dim}[${users.length} users online]${colors.reset}`)
+    }
   })
 
   client.onNodes(() => {
-    state.nodes = client.getNodes()
-    render()
+    nodes = client.getNodes()
+    if (connected) {
+      console.log(`${colors.dim}[Canvas updated - ${nodes.length} items]${colors.reset}`)
+    }
   })
 
-  const root = createRoot(renderer)
+  // Simple readline interface
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+    prompt: `${colors.cyan}>${colors.reset} `,
+  })
 
-  const render = () => {
-    root.render(<CollabCanvas state={state} myUser={client.user} />)
-  }
+  rl.prompt()
 
-  render()
+  rl.on("line", (line) => {
+    const input = line.trim()
 
-  // Key handler
-  renderer.keyInput.on("keypress", async (key: KeyEvent) => {
-    const step = 2
-
-    // Move cursor
-    if (key.name === "left" || key.name === "h") {
-      state.cursor.x = Math.max(0, state.cursor.x - step)
-      client.updateCursor(state.cursor.x, state.cursor.y)
-      render()
-    } else if (key.name === "right" || key.name === "l") {
-      state.cursor.x += step
-      client.updateCursor(state.cursor.x, state.cursor.y)
-      render()
-    } else if (key.name === "up" || key.name === "k") {
-      state.cursor.y = Math.max(0, state.cursor.y - step)
-      client.updateCursor(state.cursor.x, state.cursor.y)
-      render()
-    } else if (key.name === "down" || key.name === "j") {
-      state.cursor.y += step
-      client.updateCursor(state.cursor.x, state.cursor.y)
-      render()
-    }
-
-    // Quit
-    else if (key.name === "q") {
+    if (input.startsWith("/quit") || input.startsWith("/exit") || input === "q") {
+      console.log(`\n${colors.yellow}👋 Goodbye!${colors.reset}\n`)
       client.disconnect()
-      renderer.stop()
+      rl.close()
       process.exit(0)
     }
+
+    if (input.startsWith("/users")) {
+      console.log(`\n${colors.bright}Connected Users:${colors.reset}`)
+      for (const user of users) {
+        console.log(`  ${colors.cyan}●${colors.reset} ${user.name}`)
+      }
+      console.log()
+    }
+
+    if (input.startsWith("/list")) {
+      console.log(`\n${colors.bright}Canvas Items:${colors.reset}`)
+      if (nodes.length === 0) {
+        console.log(`  ${colors.dim}(no items yet)${colors.reset}`)
+      } else {
+        for (const node of nodes) {
+          console.log(`  ${colors.cyan}•${colors.reset} [${node.zoneId || "?"}] ${node.noteId.slice(0, 30)}`)
+        }
+      }
+      console.log()
+    }
+
+    if (input.startsWith("/add ")) {
+      const parts = input.slice(5).split(" ")
+      const zone = parts[0]
+      const text = parts.slice(1).join(" ")
+      if (zone && text) {
+        const nodeId = Math.random().toString(36).slice(2, 10)
+        client.addNode({
+          id: nodeId,
+          noteId: text,
+          x: Math.floor(Math.random() * 50),
+          y: Math.floor(Math.random() * 20),
+          zoneId: zone,
+        })
+        console.log(`${colors.green}✓ Added to ${zone}: "${text}"${colors.reset}`)
+      } else {
+        console.log(`${colors.red}Usage: /add <zone> <text>${colors.reset}`)
+      }
+    }
+
+    if (input.startsWith("/help")) {
+      printHelp()
+    }
+
+    if (input && !input.startsWith("/")) {
+      // Treat as chat message / quick add
+      console.log(`${colors.dim}Tip: Use /add <zone> <text> to add items${colors.reset}`)
+    }
+
+    rl.prompt()
   })
 
-  renderer.start()
-}
+  rl.on("close", () => {
+    client.disconnect()
+    process.exit(0)
+  })
 
-// Canvas component
-function CollabCanvas({ state, myUser }: { state: ViewerState; myUser: CollabUser }) {
-  return (
-    <box width="100%" height="100%" backgroundColor="#0f0f23" flexDirection="column">
-      {/* Header */}
-      <box height={3} backgroundColor="#1a1a2e" borderStyle="single" borderColor="#3d3d5c">
-        <text fg="#ffcc00" paddingLeft={2} paddingTop={1}>
-          ╔══ BIZCANVAS COLLAB ══╗
-        </text>
-        <text fg={state.connected ? "#00ff41" : "#ff6b6b"} position="absolute" right={2} top={1}>
-          {state.connected ? "● LIVE" : "○ OFFLINE"}
-        </text>
-      </box>
-
-      {/* Canvas area */}
-      <box flexGrow={1} flexDirection="column" position="relative">
-        {/* Draw template zones */}
-        {state.template?.zones.map((zone) => (
-          <box
-            key={zone.id}
-            position="absolute"
-            left={zone.position.x}
-            top={zone.position.y}
-            width={zone.size.width}
-            height={zone.size.height}
-            borderStyle="single"
-            borderColor={zone.color}
-          >
-            <text fg={zone.color}> {zone.icon ?? "■"} {zone.label}</text>
-          </box>
-        ))}
-
-        {/* Draw nodes */}
-        {state.nodes.map((node) => {
-          const note = state.notes.get(node.noteId)
-          return (
-            <box
-              key={node.id}
-              position="absolute"
-              left={node.x}
-              top={node.y}
-              width={20}
-              height={3}
-              backgroundColor="#1a1a2e"
-              borderStyle="single"
-              borderColor={node.color || "#ffcc00"}
-            >
-              <text fg={node.color || "#ffcc00"}>
-                {note?.title?.slice(0, 16) || node.noteId.slice(0, 8)}
-              </text>
-            </box>
-          )
-        })}
-
-        {/* Draw other users' cursors */}
-        {state.users
-          .filter(u => u.id !== myUser.id && u.cursor)
-          .map((user) => (
-            <text
-              key={user.id}
-              position="absolute"
-              left={user.cursor!.x}
-              top={user.cursor!.y}
-              fg={user.color}
-            >
-              ●
-            </text>
-          ))}
-
-        {/* My cursor */}
-        <text
-          position="absolute"
-          left={state.cursor.x}
-          top={state.cursor.y}
-          fg={myUser.color}
-        >
-          ◆
-        </text>
-      </box>
-
-      {/* User list sidebar */}
-      <box
-        position="absolute"
-        right={0}
-        top={3}
-        width={20}
-        height={state.users.length + 2}
-        backgroundColor="#1a1a2e"
-        borderStyle="single"
-        borderColor="#3d3d5c"
-      >
-        <text fg="#ffcc00" paddingLeft={1}>USERS</text>
-        {state.users.map((user, i) => (
-          <text key={user.id} fg={user.color} top={i + 1} paddingLeft={1}>
-            ● {user.name.slice(0, 12)}
-          </text>
-        ))}
-      </box>
-
-      {/* Status bar */}
-      <box height={1} backgroundColor="#1a1a2e">
-        <text fg="#00ff41" paddingLeft={1}>
-          {state.message} │ {state.users.length} users │ arrows:move │ q:quit
-        </text>
-        <text fg="#666680" position="absolute" right={2}>
-          {myUser.name}
-        </text>
-      </box>
-    </box>
-  )
+  // Handle Ctrl+C gracefully
+  process.on("SIGINT", () => {
+    console.log(`\n${colors.yellow}👋 Goodbye!${colors.reset}\n`)
+    client.disconnect()
+    process.exit(0)
+  })
 }
 
 main().catch((err) => {
-  console.error("Error:", err)
+  console.error(`${colors.red}Error: ${err.message}${colors.reset}`)
   process.exit(1)
 })
