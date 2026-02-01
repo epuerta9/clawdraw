@@ -1,16 +1,15 @@
 #!/usr/bin/env bun
 /**
- * Collaborative Live Canvas
+ * ClawDraw Live Whiteboard
  *
- * Connect to ClawDraw server and collaborate in real-time.
- * Shows canvas updates as they happen.
+ * Real-time canvas viewer that syncs with the server.
+ * Claude uses CLI commands to make changes, this just displays them.
  *
- * Usage: bun run src/collab/live.tsx <room-id> [--server wss://...]
+ * Usage: clawdraw join <room-id>
  */
 
 import { createCollabClient, type CollabUser } from "./client"
-import { getTemplate, TEMPLATES, type Template } from "../canvas/types"
-import readline from "readline"
+import { getTemplate, TEMPLATES } from "../canvas/types"
 
 // Parse args
 const args = process.argv.slice(2)
@@ -19,121 +18,104 @@ const serverArg = args.indexOf("--server")
 const defaultServer = process.env.CLAWDRAW_SERVER || "wss://clawdraw.cloudshipai.com/ws"
 const serverUrl = serverArg !== -1 ? args[serverArg + 1] : defaultServer
 
-// ANSI colors
+// ANSI
 const c = {
   reset: "\x1b[0m",
   bright: "\x1b[1m",
   dim: "\x1b[2m",
   green: "\x1b[32m",
   yellow: "\x1b[33m",
-  blue: "\x1b[34m",
-  magenta: "\x1b[35m",
   cyan: "\x1b[36m",
   red: "\x1b[31m",
-  bg: "\x1b[48;2;15;15;35m",
+  magenta: "\x1b[35m",
 }
 
-// Zone colors for SWOT
 const zoneColors: Record<string, string> = {
-  strengths: "\x1b[32m",      // green
-  weaknesses: "\x1b[31m",     // red
-  opportunities: "\x1b[36m",  // cyan
-  threats: "\x1b[33m",        // yellow
-  // BMC
-  key_partners: "\x1b[35m",
-  key_activities: "\x1b[34m",
-  key_resources: "\x1b[34m",
-  value_props: "\x1b[31m",
-  customer_rel: "\x1b[32m",
-  channels: "\x1b[32m",
-  customer_seg: "\x1b[33m",
-  cost_structure: "\x1b[37m",
+  strengths: "\x1b[32m", weaknesses: "\x1b[31m",
+  opportunities: "\x1b[36m", threats: "\x1b[33m",
+  key_partners: "\x1b[35m", key_activities: "\x1b[34m",
+  key_resources: "\x1b[34m", value_props: "\x1b[31m",
+  customer_rel: "\x1b[32m", channels: "\x1b[32m",
+  customer_seg: "\x1b[33m", cost_structure: "\x1b[37m",
   revenue_streams: "\x1b[32m",
+  problem: "\x1b[31m", solution: "\x1b[32m",
+  backlog: "\x1b[37m", todo: "\x1b[34m",
+  in_progress: "\x1b[33m", done: "\x1b[32m",
 }
 
 interface CanvasNode {
   id: string
-  noteId: string  // This is the text content
-  x: number
-  y: number
+  noteId: string
   zoneId?: string
-  color?: string
 }
 
-function renderCanvas(nodes: CanvasNode[], templateId: string = "swot") {
-  const template = getTemplate(templateId) || TEMPLATES[0]
-  const width = 60
+function clearScreen() {
+  process.stdout.write("\x1b[2J\x1b[H")
+}
 
-  console.log(`\n${c.yellow}╔${"═".repeat(width)}╗${c.reset}`)
-  console.log(`${c.yellow}║${c.reset}  ${c.bright}📋 ${template?.name || "Canvas"}${c.reset}${" ".repeat(width - 6 - (template?.name?.length || 6))}${c.yellow}║${c.reset}`)
+function render(nodes: CanvasNode[], users: CollabUser[], templateId: string, connected: boolean) {
+  clearScreen()
+
+  const template = getTemplate(templateId) || TEMPLATES[0]
+  const width = 62
+  const now = new Date().toLocaleTimeString()
+
+  // Header
+  console.log(`${c.yellow}╔${"═".repeat(width)}╗${c.reset}`)
+  console.log(`${c.yellow}║${c.reset} ${c.bright}🎨 CLAWDRAW${c.reset}  ${c.dim}${template?.name || "Canvas"}${c.reset}${" ".repeat(width - 25 - (template?.name?.length || 0))}${connected ? c.green + "● LIVE" : c.red + "○ OFFLINE"}${c.reset} ${c.yellow}║${c.reset}`)
+  console.log(`${c.yellow}║${c.reset} ${c.dim}Room: ${roomId.slice(0, 30)}${c.reset}${" ".repeat(width - 8 - Math.min(30, roomId.length))} ${c.yellow}║${c.reset}`)
   console.log(`${c.yellow}╠${"═".repeat(width)}╣${c.reset}`)
 
-  // Group nodes by zone
+  // Group by zone
   const byZone = new Map<string, CanvasNode[]>()
   for (const node of nodes) {
-    const zone = node.zoneId || "unassigned"
+    const zone = node.zoneId || "items"
     if (!byZone.has(zone)) byZone.set(zone, [])
     byZone.get(zone)!.push(node)
   }
 
-  // Render each zone
-  if (template?.zones) {
+  // Render zones
+  if (template?.zones && template.zones.length > 0) {
     for (const zone of template.zones) {
-      const zoneNodes = byZone.get(zone.name) || []
+      const items = byZone.get(zone.name) || []
       const color = zoneColors[zone.name] || c.cyan
 
-      console.log(`${c.yellow}║${c.reset} ${color}${zone.icon || "■"} ${zone.label}${c.reset}${" ".repeat(width - zone.label.length - 4)}${c.yellow}║${c.reset}`)
-      console.log(`${c.yellow}║${c.reset}  ${c.dim}${"─".repeat(width - 4)}${c.reset}  ${c.yellow}║${c.reset}`)
+      console.log(`${c.yellow}║${c.reset} ${color}${zone.icon || "■"} ${zone.label.toUpperCase()}${c.reset} ${c.dim}(${items.length})${c.reset}${" ".repeat(width - zone.label.length - 8 - items.length.toString().length)}${c.yellow}║${c.reset}`)
 
-      if (zoneNodes.length === 0) {
-        console.log(`${c.yellow}║${c.reset}    ${c.dim}(empty)${c.reset}${" ".repeat(width - 11)}${c.yellow}║${c.reset}`)
+      if (items.length === 0) {
+        console.log(`${c.yellow}║${c.reset}   ${c.dim}—${c.reset}${" ".repeat(width - 5)}${c.yellow}║${c.reset}`)
       } else {
-        for (const node of zoneNodes.slice(0, 5)) {
-          const text = (node.noteId || "").slice(0, width - 8)
-          console.log(`${c.yellow}║${c.reset}    ${color}•${c.reset} ${text}${" ".repeat(Math.max(0, width - text.length - 7))}${c.yellow}║${c.reset}`)
+        for (const item of items.slice(0, 6)) {
+          const text = (item.noteId || "").slice(0, width - 8)
+          console.log(`${c.yellow}║${c.reset}   ${color}•${c.reset} ${text}${" ".repeat(Math.max(0, width - 6 - text.length))}${c.yellow}║${c.reset}`)
         }
-        if (zoneNodes.length > 5) {
-          console.log(`${c.yellow}║${c.reset}    ${c.dim}... +${zoneNodes.length - 5} more${c.reset}${" ".repeat(width - 15)}${c.yellow}║${c.reset}`)
+        if (items.length > 6) {
+          console.log(`${c.yellow}║${c.reset}   ${c.dim}+${items.length - 6} more${c.reset}${" ".repeat(width - 12 - (items.length - 6).toString().length)}${c.yellow}║${c.reset}`)
         }
       }
-      console.log(`${c.yellow}║${c.reset}${" ".repeat(width)}${c.yellow}║${c.reset}`)
     }
   } else {
-    // Freeform - just list all items
+    // Freeform
     if (nodes.length === 0) {
-      console.log(`${c.yellow}║${c.reset}  ${c.dim}(no items yet)${c.reset}${" ".repeat(width - 16)}${c.yellow}║${c.reset}`)
+      console.log(`${c.yellow}║${c.reset}   ${c.dim}(empty canvas)${c.reset}${" ".repeat(width - 17)}${c.yellow}║${c.reset}`)
     } else {
-      for (const node of nodes.slice(0, 10)) {
-        const text = (node.noteId || "").slice(0, width - 6)
-        console.log(`${c.yellow}║${c.reset}  • ${text}${" ".repeat(Math.max(0, width - text.length - 4))}${c.yellow}║${c.reset}`)
+      for (const item of nodes.slice(0, 15)) {
+        const text = (item.noteId || "").slice(0, width - 6)
+        console.log(`${c.yellow}║${c.reset}   • ${text}${" ".repeat(Math.max(0, width - 5 - text.length))}${c.yellow}║${c.reset}`)
       }
     }
   }
 
-  console.log(`${c.yellow}╚${"═".repeat(width)}╝${c.reset}\n`)
-}
-
-function printStatus(connected: boolean, users: CollabUser[], roomId: string) {
-  const status = connected ? `${c.green}● LIVE${c.reset}` : `${c.red}○ OFFLINE${c.reset}`
-  const userList = users.map(u => u.name.slice(0, 10)).join(", ").slice(0, 30)
-  console.log(`${c.dim}[${roomId.slice(0, 20)} | ${status} | ${users.length} users: ${userList || "..."}]${c.reset}`)
-}
-
-function printHelp() {
-  console.log(`
-${c.bright}Commands:${c.reset}
-  ${c.cyan}/add <zone> <text>${c.reset}  Add item to zone (e.g. /add strengths "Great team")
-  ${c.cyan}/view${c.reset}               Show canvas
-  ${c.cyan}/users${c.reset}              Show connected users
-  ${c.cyan}/clear${c.reset}              Clear screen
-  ${c.cyan}/quit${c.reset}               Exit
-
-${c.dim}SWOT zones: strengths, weaknesses, opportunities, threats${c.reset}
-`)
+  // Footer with users
+  console.log(`${c.yellow}╠${"═".repeat(width)}╣${c.reset}`)
+  const userNames = users.map(u => u.name.slice(0, 12)).join(", ").slice(0, width - 20)
+  console.log(`${c.yellow}║${c.reset} ${c.dim}Users (${users.length}): ${userNames || "connecting..."}${c.reset}${" ".repeat(Math.max(0, width - 12 - users.length.toString().length - userNames.length))}${c.yellow}║${c.reset}`)
+  console.log(`${c.yellow}║${c.reset} ${c.dim}Updated: ${now}${c.reset}${" ".repeat(width - 12 - now.length)}${c.dim}q=quit${c.reset} ${c.yellow}║${c.reset}`)
+  console.log(`${c.yellow}╚${"═".repeat(width)}╝${c.reset}`)
 }
 
 async function main() {
-  console.log(`\n${c.cyan}🔗 Connecting to ${serverUrl}/${roomId}...${c.reset}\n`)
+  console.log(`${c.cyan}🔗 Connecting to ${roomId}...${c.reset}`)
 
   const client = createCollabClient(serverUrl!, roomId)
 
@@ -141,124 +123,57 @@ async function main() {
   let users: CollabUser[] = []
   let nodes: CanvasNode[] = []
   let templateId = "swot"
-  let autoRender = true
+
+  const update = () => render(nodes, users, templateId, connected)
 
   client.onConnected(() => {
     connected = true
     const canvas = client.getCanvas()
     if (canvas) templateId = canvas.templateId || "swot"
     nodes = client.getNodes()
-
-    console.log(`${c.green}✓ Connected to room: ${roomId}${c.reset}`)
-    printStatus(connected, users, roomId)
-    if (autoRender && nodes.length > 0) renderCanvas(nodes, templateId)
-    printHelp()
+    update()
   })
 
   client.onDisconnected(() => {
     connected = false
-    console.log(`\n${c.red}⚠ Disconnected - reconnecting...${c.reset}`)
+    update()
   })
 
   client.onUsers((newUsers) => {
-    const joined = newUsers.filter(u => !users.find(ou => ou.id === u.id))
-    const left = users.filter(u => !newUsers.find(nu => nu.id === u.id))
     users = newUsers
-
-    for (const u of joined) {
-      if (connected) console.log(`${c.green}→ ${u.name} joined${c.reset}`)
-    }
-    for (const u of left) {
-      if (connected) console.log(`${c.dim}← ${u.name} left${c.reset}`)
-    }
+    update()
   })
 
   client.onNodes(() => {
-    const oldCount = nodes.length
     nodes = client.getNodes()
-    if (connected && nodes.length !== oldCount) {
-      console.log(`${c.cyan}[Canvas updated: ${nodes.length} items]${c.reset}`)
-      if (autoRender) renderCanvas(nodes, templateId)
-    }
+    update()
   })
 
-  // Simple readline interface
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-    prompt: `${c.cyan}>${c.reset} `,
-  })
-
-  rl.prompt()
-
-  rl.on("line", (line) => {
-    const input = line.trim()
-
-    if (input.startsWith("/quit") || input.startsWith("/exit") || input === "q") {
-      console.log(`\n${c.yellow}👋 Goodbye!${c.reset}\n`)
-      client.disconnect()
-      rl.close()
-      process.exit(0)
-    }
-
-    if (input.startsWith("/clear")) {
-      process.stdout.write("\x1b[2J\x1b[H")
-      printStatus(connected, users, roomId)
-    }
-
-    if (input.startsWith("/view")) {
-      renderCanvas(nodes, templateId)
-    }
-
-    if (input.startsWith("/users")) {
-      console.log(`\n${c.bright}Connected Users (${users.length}):${c.reset}`)
-      for (const user of users) {
-        console.log(`  ${c.cyan}●${c.reset} ${user.name}`)
+  // Handle quit
+  if (process.stdin.isTTY) {
+    process.stdin.setRawMode(true)
+    process.stdin.resume()
+    process.stdin.on("data", (key) => {
+      if (key.toString() === "q" || key.toString() === "\x03") { // q or Ctrl+C
+        clearScreen()
+        console.log(`${c.yellow}👋 Disconnected from ${roomId}${c.reset}\n`)
+        client.disconnect()
+        process.exit(0)
       }
-      console.log()
-    }
-
-    if (input.startsWith("/auto")) {
-      autoRender = !autoRender
-      console.log(`Auto-render: ${autoRender ? "ON" : "OFF"}`)
-    }
-
-    if (input.startsWith("/add ")) {
-      const match = input.match(/^\/add\s+(\w+)\s+["']?(.+?)["']?$/)
-      if (match) {
-        const [, zone, text] = match
-        const nodeId = Math.random().toString(36).slice(2, 10)
-        client.addNode({
-          id: nodeId,
-          noteId: text,
-          x: Math.floor(Math.random() * 50),
-          y: Math.floor(Math.random() * 20),
-          zoneId: zone,
-        })
-        console.log(`${c.green}✓ Added to ${zone}: "${text}"${c.reset}`)
-      } else {
-        console.log(`${c.red}Usage: /add <zone> <text>${c.reset}`)
-        console.log(`${c.dim}Example: /add strengths "Strong engineering team"${c.reset}`)
+      if (key.toString() === "r") { // r to refresh
+        update()
       }
-    }
-
-    if (input.startsWith("/help") || input === "?") {
-      printHelp()
-    }
-
-    rl.prompt()
-  })
-
-  rl.on("close", () => {
-    client.disconnect()
-    process.exit(0)
-  })
+    })
+  }
 
   process.on("SIGINT", () => {
-    console.log(`\n${c.yellow}👋 Goodbye!${c.reset}\n`)
+    clearScreen()
     client.disconnect()
     process.exit(0)
   })
+
+  // Initial render
+  render(nodes, users, templateId, connected)
 }
 
 main().catch((err) => {
