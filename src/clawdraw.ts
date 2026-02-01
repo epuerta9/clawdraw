@@ -348,9 +348,10 @@ async function cmdPush(roomId: string, zone: string, content: string) {
 
   const client = createCollabClient(`${wsUrl}/ws`, roomId)
 
-  // Wait for connection
+  // Wait for connection and push
   await new Promise<void>((resolve, reject) => {
     const timeout = setTimeout(() => reject(new Error("Connection timeout")), 10000)
+    let intentionalDisconnect = false
 
     client.onConnected(() => {
       clearTimeout(timeout)
@@ -367,16 +368,19 @@ async function cmdPush(roomId: string, zone: string, content: string) {
 
       console.log(`✓ Added to ${zone}: "${content}"`)
 
-      // Give Y.js time to sync
+      // Give Y.js time to sync, then disconnect
       setTimeout(() => {
+        intentionalDisconnect = true
         client.disconnect()
         resolve()
       }, 500)
     })
 
     client.onDisconnected(() => {
-      clearTimeout(timeout)
-      reject(new Error("Disconnected"))
+      if (!intentionalDisconnect) {
+        clearTimeout(timeout)
+        reject(new Error("Disconnected unexpectedly"))
+      }
     })
   })
 }
